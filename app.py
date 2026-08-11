@@ -30,7 +30,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Free model
-MODEL = "meta-llama/llama-3.2-3b-instruct:free"
+MODEL = "openrouter/free"
 
 AI_TIMEOUT = 60
 
