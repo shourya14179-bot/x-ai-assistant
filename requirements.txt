@@ -23,7 +23,6 @@ packaging==26.3
 pefile==2024.8.26
 pydantic==2.13.4
 pydantic_core==2.46.4
-pygame==2.6.1
 pyinstaller==6.21.0
 pyinstaller-hooks-contrib==2026.6
 pywin32-ctypes==0.2.3
@@ -36,6 +35,4 @@ typing_extensions==4.16.0
 urllib3==2.7.0
 waitress==3.0.2
 Werkzeug==3.1.8
-Flask
-requests
-gunicorn
+
