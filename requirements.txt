@@ -3,3 +3,4 @@ Flask-Login==0.6.3
 gunicorn==26.0.0
 httpx==0.28.1
 openai==2.53.0
+requests
