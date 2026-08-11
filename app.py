@@ -1,33 +1,45 @@
-from flask import Flask, request, jsonify, session, render_template_string, redirect
+from flask import Flask, request, jsonify, session, render_template_string
 import sqlite3
 import requests
 import secrets
+import os
 from functools import wraps
 from datetime import datetime
 
 # ============================================================
-# X.AI - SINGLE FILE APP
+# X.AI - FULL FLASK APP
+# Flask + OpenRouter + SQLite + Login + Chats + Memory
 # ============================================================
 
 app = Flask(__name__)
 
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.getenv(
+    "SECRET_KEY",
+    secrets.token_hex(32)
+)
 
-HOST = "127.0.0.1"
-PORT = 5000
+HOST = "0.0.0.0"
+PORT = int(os.getenv("PORT", "5000"))
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-MODEL = "llama3.2"
+# ============================================================
+# OPENROUTER
+# ============================================================
 
-# AI request timeout = 20 seconds
-AI_TIMEOUT = 20
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-DB_FILE = "xai.db"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+# Free model
+MODEL = "meta-llama/llama-3.2-3b-instruct:free"
+
+AI_TIMEOUT = 60
 
 # ============================================================
 # DATABASE
 # ============================================================
+
+DB_FILE = "xai.db"
+
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
@@ -84,10 +96,10 @@ def init_db():
 
 init_db()
 
-
 # ============================================================
 # HELPERS
 # ============================================================
+
 
 def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -104,6 +116,7 @@ def login_required(func):
             return jsonify({
                 "error": "Please login first."
             }), 401
+
         return func(*args, **kwargs)
 
     return wrapper
@@ -113,9 +126,14 @@ def make_chat(user_id, title="New Chat"):
     conn = get_db()
 
     cursor = conn.execute("""
-        INSERT INTO chats (user_id, title, created_at)
+        INSERT INTO chats
+        (user_id, title, created_at)
         VALUES (?, ?, ?)
-    """, (user_id, title, now()))
+    """, (
+        user_id,
+        title,
+        now()
+    ))
 
     chat_id = cursor.lastrowid
 
@@ -129,9 +147,13 @@ def check_chat_owner(chat_id, user_id):
     conn = get_db()
 
     chat = conn.execute("""
-        SELECT * FROM chats
+        SELECT *
+        FROM chats
         WHERE id = ? AND user_id = ?
-    """, (chat_id, user_id)).fetchone()
+    """, (
+        chat_id,
+        user_id
+    )).fetchone()
 
     conn.close()
 
@@ -139,10 +161,10 @@ def check_chat_owner(chat_id, user_id):
 
 
 # ============================================================
-# MAIN PAGE
+# HTML
 # ============================================================
 
-HTML = r"""
+HTML = """
 <!DOCTYPE html>
 <html lang="en">
 
@@ -170,36 +192,22 @@ body {
     overflow: hidden;
 }
 
-/* LOGIN */
-
-#loginScreen {
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
+button,
+input {
+    font-family: inherit;
 }
 
-.login-box {
-    width: 360px;
-    background: #111;
-    border: 1px solid #333;
-    border-radius: 18px;
-    padding: 35px;
-    box-shadow: 0 0 40px rgba(255,255,255,.05);
+button {
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 16px;
+    cursor: pointer;
+    background: #222;
+    color: white;
 }
 
-.logo {
-    text-align: center;
-    font-size: 38px;
-    font-weight: bold;
-    margin-bottom: 8px;
-}
-
-.subtitle {
-    text-align: center;
-    color: #999;
-    margin-bottom: 25px;
+button:hover {
+    background: #333;
 }
 
 input {
@@ -217,17 +225,34 @@ input:focus {
     border-color: #777;
 }
 
-button {
-    border: 0;
-    border-radius: 10px;
-    padding: 11px 16px;
-    cursor: pointer;
-    color: white;
-    background: #222;
+/* LOGIN */
+
+#loginScreen {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
 }
 
-button:hover {
-    background: #333;
+.login-box {
+    width: 360px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 18px;
+    padding: 35px;
+}
+
+.logo {
+    text-align: center;
+    font-size: 38px;
+    font-weight: bold;
+}
+
+.subtitle {
+    text-align: center;
+    color: #999;
+    margin: 8px 0 25px;
 }
 
 .login-button {
@@ -247,6 +272,13 @@ button:hover {
     margin-top: 18px;
     color: #aaa;
     cursor: pointer;
+}
+
+.status {
+    text-align: center;
+    color: #777;
+    font-size: 12px;
+    margin-top: 10px;
 }
 
 /* APP */
@@ -358,7 +390,7 @@ button:hover {
 
 .message {
     max-width: 850px;
-    margin: 0 auto 25px auto;
+    margin: 0 auto 25px;
     display: flex;
     gap: 15px;
 }
@@ -374,15 +406,15 @@ button:hover {
     font-weight: bold;
 }
 
+.user-message .avatar {
+    background: white;
+    color: black;
+}
+
 .message-content {
     line-height: 1.6;
     white-space: pre-wrap;
     word-wrap: break-word;
-}
-
-.user-message .avatar {
-    background: white;
-    color: black;
 }
 
 .input-area {
@@ -405,7 +437,6 @@ button:hover {
     border: 0;
     background: transparent;
     margin: 0;
-    resize: none;
 }
 
 .send {
@@ -418,14 +449,7 @@ button:hover {
     background: #ddd;
 }
 
-.status {
-    text-align: center;
-    color: #777;
-    font-size: 12px;
-    margin-top: 8px;
-}
-
-/* SETTINGS */
+/* MODALS */
 
 .modal {
     display: none;
@@ -439,14 +463,13 @@ button:hover {
 
 .modal-box {
     width: 420px;
+    max-width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
     background: #111;
     border: 1px solid #333;
     border-radius: 15px;
     padding: 25px;
-}
-
-.modal-box h2 {
-    margin-top: 0;
 }
 
 .close {
@@ -479,10 +502,7 @@ button:hover {
 
 <body>
 
-
-<!-- ======================================================
-     LOGIN
-====================================================== -->
+<!-- LOGIN -->
 
 <div id="loginScreen">
 
@@ -529,9 +549,7 @@ button:hover {
 </div>
 
 
-<!-- ======================================================
-     APP
-====================================================== -->
+<!-- APP -->
 
 <div id="appScreen">
 
@@ -546,17 +564,15 @@ button:hover {
             <button
                 class="new-chat"
                 onclick="newChat()">
-                ＋ New Chat
+                + New Chat
             </button>
 
         </div>
-
 
         <div
             id="chatList"
             class="chat-list">
         </div>
-
 
         <div class="sidebar-bottom">
 
@@ -568,19 +584,19 @@ button:hover {
             <button
                 class="sidebar-button"
                 onclick="openMemory()">
-                🧠 Memory
+                Memory
             </button>
 
             <button
                 class="sidebar-button"
                 onclick="openSettings()">
-                ⚙ Settings
+                Settings
             </button>
 
             <button
                 class="sidebar-button"
                 onclick="logout()">
-                ⇥ Logout
+                Logout
             </button>
 
         </div>
@@ -600,12 +616,10 @@ button:hover {
 
         </div>
 
-
         <div
             id="chatArea"
             class="chat-area">
         </div>
-
 
         <div class="input-area">
 
@@ -638,9 +652,7 @@ button:hover {
 </div>
 
 
-<!-- ======================================================
-     SETTINGS MODAL
-====================================================== -->
+<!-- SETTINGS -->
 
 <div
     id="settingsModal"
@@ -651,25 +663,29 @@ button:hover {
         <button
             class="close"
             onclick="closeSettings()">
-            ✕
+            X
         </button>
 
         <h2>Settings</h2>
 
         <p>
-            <b>Model:</b> llama3.2
+            <b>Model:</b>
+            {{ model }}
         </p>
 
         <p>
-            <b>AI timeout:</b> 20 seconds
+            <b>AI timeout:</b>
+            {{ timeout }} seconds
         </p>
 
         <p>
-            <b>Theme:</b> Black
+            <b>Provider:</b>
+            OpenRouter
         </p>
 
         <p>
-            X.ai local assistant
+            <b>Theme:</b>
+            Black
         </p>
 
     </div>
@@ -677,9 +693,7 @@ button:hover {
 </div>
 
 
-<!-- ======================================================
-     MEMORY MODAL
-====================================================== -->
+<!-- MEMORY -->
 
 <div
     id="memoryModal"
@@ -690,7 +704,7 @@ button:hover {
         <button
             class="close"
             onclick="closeMemory()">
-            ✕
+            X
         </button>
 
         <h2>Memory</h2>
@@ -700,8 +714,7 @@ button:hover {
             placeholder="Tell X.ai something to remember..."
         >
 
-        <button
-            onclick="saveMemory()">
+        <button onclick="saveMemory()">
             Save Memory
         </button>
 
@@ -717,63 +730,15 @@ button:hover {
 
 <script>
 
-/* ============================================================
-   STATE
-============================================================ */
-
 let currentChat = null;
 
 
-/* ============================================================
-   LOGIN
-============================================================ */
+/* LOGIN */
 
 async function login() {
 
     const username =
-        document.getElementById("username").value;
-
-    const password =
-        document.getElementById("password").value;
-
-    const response = await fetch("/login", {
-
-        method: "POST",
-
-        headers: {
-            "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-            username,
-            password
-        })
-
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-
-        document.getElementById("loginStatus").innerText =
-            data.error;
-
-        return;
-    }
-
-    showApp();
-
-}
-
-
-/* ============================================================
-   REGISTER
-============================================================ */
-
-async function register() {
-
-    const username =
-        document.getElementById("username").value;
+        document.getElementById("username").value.trim();
 
     const password =
         document.getElementById("password").value;
@@ -786,40 +751,108 @@ async function register() {
         return;
     }
 
-    const response = await fetch("/register", {
+    try {
 
-        method: "POST",
+        const response = await fetch("/login", {
 
-        headers: {
-            "Content-Type": "application/json"
-        },
+            method: "POST",
 
-        body: JSON.stringify({
-            username,
-            password
-        })
+            headers: {
+                "Content-Type": "application/json"
+            },
 
-    });
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
 
-    const data = await response.json();
+        });
 
-    document.getElementById("loginStatus").innerText =
-        data.message || data.error;
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            document.getElementById("loginStatus").innerText =
+                data.error || "Login failed.";
+
+            return;
+        }
+
+        showApp();
+
+    } catch (error) {
+
+        document.getElementById("loginStatus").innerText =
+            "Connection error.";
+
+    }
 
 }
 
 
-/* ============================================================
-   SHOW APP
-============================================================ */
+/* REGISTER */
+
+async function register() {
+
+    const username =
+        document.getElementById("username").value.trim();
+
+    const password =
+        document.getElementById("password").value;
+
+    if (!username || !password) {
+
+        document.getElementById("loginStatus").innerText =
+            "Enter username and password.";
+
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/register", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+
+        });
+
+        const data = await response.json();
+
+        document.getElementById("loginStatus").innerText =
+            data.message || data.error;
+
+        if (response.ok) {
+            showApp();
+        }
+
+    } catch (error) {
+
+        document.getElementById("loginStatus").innerText =
+            "Connection error.";
+
+    }
+
+}
+
+
+/* SHOW APP */
 
 async function showApp() {
 
-    document.getElementById("loginScreen").style.display =
-        "none";
+    document.getElementById("loginScreen")
+        .style.display = "none";
 
-    document.getElementById("appScreen").style.display =
-        "flex";
+    document.getElementById("appScreen")
+        .style.display = "flex";
 
     await loadUser();
     await loadChats();
@@ -827,9 +860,7 @@ async function showApp() {
 }
 
 
-/* ============================================================
-   USER
-============================================================ */
+/* USER */
 
 async function loadUser() {
 
@@ -842,16 +873,14 @@ async function loadUser() {
     if (data.username) {
 
         document.getElementById("userName").innerText =
-            "👤 " + data.username;
+            "User: " + data.username;
 
     }
 
 }
 
 
-/* ============================================================
-   CHAT LIST
-============================================================ */
+/* CHATS */
 
 async function loadChats() {
 
@@ -875,17 +904,15 @@ async function loadChats() {
         const item =
             document.createElement("div");
 
-        item.className =
-            "chat-item";
+        item.className = "chat-item";
 
         if (chat.id === currentChat) {
             item.classList.add("active");
         }
 
-        item.innerText =
-            chat.title;
+        item.innerText = chat.title;
 
-        item.onclick = () => {
+        item.onclick = function() {
             openChat(chat.id);
         };
 
@@ -896,9 +923,7 @@ async function loadChats() {
 }
 
 
-/* ============================================================
-   NEW CHAT
-============================================================ */
+/* NEW CHAT */
 
 async function newChat() {
 
@@ -910,11 +935,16 @@ async function newChat() {
     const data =
         await response.json();
 
-    currentChat =
-        data.chat_id;
+    if (!response.ok) {
 
-    document.getElementById("chatArea").innerHTML =
-        "";
+        alert(data.error || "Could not create chat.");
+
+        return;
+    }
+
+    currentChat = data.chat_id;
+
+    document.getElementById("chatArea").innerHTML = "";
 
     document.getElementById("chatTitle").innerText =
         "New Chat";
@@ -924,20 +954,24 @@ async function newChat() {
 }
 
 
-/* ============================================================
-   OPEN CHAT
-============================================================ */
+/* OPEN CHAT */
 
 async function openChat(chatId) {
-
-    currentChat =
-        chatId;
 
     const response =
         await fetch("/chat/" + chatId);
 
     const data =
         await response.json();
+
+    if (!response.ok) {
+
+        alert(data.error || "Could not open chat.");
+
+        return;
+    }
+
+    currentChat = chatId;
 
     document.getElementById("chatTitle").innerText =
         data.title;
@@ -961,9 +995,7 @@ async function openChat(chatId) {
 }
 
 
-/* ============================================================
-   DISPLAY MESSAGE
-============================================================ */
+/* MESSAGE DISPLAY */
 
 function addMessage(role, content) {
 
@@ -973,14 +1005,12 @@ function addMessage(role, content) {
     const message =
         document.createElement("div");
 
-    message.className =
-        "message";
+    message.className = "message";
 
     const avatar =
         document.createElement("div");
 
-    avatar.className =
-        "avatar";
+    avatar.className = "avatar";
 
     avatar.innerText =
         role === "user" ? "U" : "X";
@@ -988,14 +1018,11 @@ function addMessage(role, content) {
     const text =
         document.createElement("div");
 
-    text.className =
-        "message-content";
+    text.className = "message-content";
 
-    text.innerText =
-        content;
+    text.innerText = content;
 
     message.appendChild(avatar);
-
     message.appendChild(text);
 
     area.appendChild(message);
@@ -1005,9 +1032,7 @@ function addMessage(role, content) {
 }
 
 
-/* ============================================================
-   SEND MESSAGE
-============================================================ */
+/* SEND MESSAGE */
 
 async function sendMessage() {
 
@@ -1025,47 +1050,55 @@ async function sendMessage() {
         await newChat();
     }
 
-    addMessage(
-        "user",
-        text
-    );
+    addMessage("user", text);
 
     input.value = "";
 
     document.getElementById("status").innerText =
         "X.ai is thinking...";
 
-    const response =
-        await fetch("/ask", {
+    try {
 
-            method: "POST",
+        const response =
+            await fetch("/ask", {
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+                method: "POST",
 
-            body: JSON.stringify({
-                chat_id: currentChat,
-                message: text
-            })
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-        });
+                body: JSON.stringify({
+                    chat_id: currentChat,
+                    message: text
+                })
 
-    const data =
-        await response.json();
+            });
 
-    if (data.error) {
+        const data =
+            await response.json();
+
+        if (data.error) {
+
+            addMessage(
+                "assistant",
+                "Error: " + data.error
+            );
+
+        } else {
+
+            addMessage(
+                "assistant",
+                data.response
+            );
+
+        }
+
+    } catch (error) {
 
         addMessage(
             "assistant",
-            "⚠ " + data.error
-        );
-
-    } else {
-
-        addMessage(
-            "assistant",
-            data.response
+            "Connection error: " + error.message
         );
 
     }
@@ -1078,9 +1111,7 @@ async function sendMessage() {
 }
 
 
-/* ============================================================
-   ENTER KEY
-============================================================ */
+/* ENTER */
 
 function handleKey(event) {
 
@@ -1095,9 +1126,7 @@ function handleKey(event) {
 }
 
 
-/* ============================================================
-   LOGOUT
-============================================================ */
+/* LOGOUT */
 
 async function logout() {
 
@@ -1110,9 +1139,7 @@ async function logout() {
 }
 
 
-/* ============================================================
-   SETTINGS
-============================================================ */
+/* SETTINGS */
 
 function openSettings() {
 
@@ -1120,6 +1147,7 @@ function openSettings() {
         .style.display = "flex";
 
 }
+
 
 function closeSettings() {
 
@@ -1129,9 +1157,7 @@ function closeSettings() {
 }
 
 
-/* ============================================================
-   MEMORY
-============================================================ */
+/* MEMORY */
 
 async function openMemory() {
 
@@ -1141,6 +1167,7 @@ async function openMemory() {
     await loadMemory();
 
 }
+
 
 function closeMemory() {
 
@@ -1162,19 +1189,30 @@ async function saveMemory() {
         return;
     }
 
-    await fetch("/memory", {
+    const response =
+        await fetch("/memory", {
 
-        method: "POST",
+            method: "POST",
 
-        headers: {
-            "Content-Type": "application/json"
-        },
+            headers: {
+                "Content-Type": "application/json"
+            },
 
-        body: JSON.stringify({
-            memory
-        })
+            body: JSON.stringify({
+                memory: memory
+            })
 
-    });
+        });
+
+    const data =
+        await response.json();
+
+    if (!response.ok) {
+
+        alert(data.error || "Could not save memory.");
+
+        return;
+    }
 
     input.value = "";
 
@@ -1187,6 +1225,10 @@ async function loadMemory() {
 
     const response =
         await fetch("/memory");
+
+    if (!response.ok) {
+        return;
+    }
 
     const memories =
         await response.json();
@@ -1201,8 +1243,7 @@ async function loadMemory() {
         const div =
             document.createElement("div");
 
-        div.style.padding =
-            "8px 0";
+        div.style.padding = "8px 0";
 
         div.innerText =
             "• " + memory.memory;
@@ -1216,18 +1257,21 @@ async function loadMemory() {
 </script>
 
 </body>
-
 </html>
 """
 
 
 # ============================================================
-# ROUTES
+# HOME
 # ============================================================
 
 @app.route("/")
 def index():
-    return render_template_string(HTML)
+    return render_template_string(
+        HTML,
+        model=MODEL,
+        timeout=AI_TIMEOUT
+    )
 
 
 # ============================================================
@@ -1237,7 +1281,7 @@ def index():
 @app.route("/register", methods=["POST"])
 def register():
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     username = data.get("username", "").strip()
     password = data.get("password", "")
@@ -1255,7 +1299,11 @@ def register():
             INSERT INTO users
             (username, password, created_at)
             VALUES (?, ?, ?)
-        """, (username, password, now()))
+        """, (
+            username,
+            password,
+            now()
+        ))
 
         user_id = cursor.lastrowid
 
@@ -1291,7 +1339,7 @@ def register():
 @app.route("/login", methods=["POST"])
 def login():
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     username = data.get("username", "").strip()
     password = data.get("password", "")
@@ -1299,9 +1347,13 @@ def login():
     conn = get_db()
 
     user = conn.execute("""
-        SELECT * FROM users
+        SELECT *
+        FROM users
         WHERE username = ? AND password = ?
-    """, (username, password)).fetchone()
+    """, (
+        username,
+        password
+    )).fetchone()
 
     conn.close()
 
@@ -1341,7 +1393,6 @@ def logout():
 def me():
 
     if not current_user():
-
         return jsonify({})
 
     return jsonify({
@@ -1364,7 +1415,9 @@ def chats():
         FROM chats
         WHERE user_id = ?
         ORDER BY id DESC
-    """, (current_user(),)).fetchall()
+    """, (
+        current_user(),
+    )).fetchall()
 
     conn.close()
 
@@ -1418,7 +1471,9 @@ def get_chat(chat_id):
         FROM messages
         WHERE chat_id = ?
         ORDER BY id ASC
-    """, (chat_id,)).fetchall()
+    """, (
+        chat_id,
+    )).fetchall()
 
     conn.close()
 
@@ -1444,7 +1499,7 @@ def get_chat(chat_id):
 @login_required
 def ask():
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     chat_id = data.get("chat_id")
     message = data.get("message", "").strip()
@@ -1466,9 +1521,24 @@ def ask():
             "error": "Chat not found."
         }), 404
 
+    # --------------------------------------------------------
+    # CHECK API KEY
+    # --------------------------------------------------------
+
+    if not OPENROUTER_API_KEY:
+
+        return jsonify({
+            "error": (
+                "OPENROUTER_API_KEY is not configured. "
+                "Add it to the environment variables."
+            )
+        }), 500
+
     conn = get_db()
 
-    # Save user message
+    # --------------------------------------------------------
+    # SAVE USER MESSAGE
+    # --------------------------------------------------------
 
     conn.execute("""
         INSERT INTO messages
@@ -1481,16 +1551,22 @@ def ask():
         now()
     ))
 
-    # Get previous messages
+    # --------------------------------------------------------
+    # GET CONVERSATION
+    # --------------------------------------------------------
 
     rows = conn.execute("""
         SELECT role, content
         FROM messages
         WHERE chat_id = ?
         ORDER BY id ASC
-    """, (chat_id,)).fetchall()
+    """, (
+        chat_id,
+    )).fetchall()
 
-    # Get memory
+    # --------------------------------------------------------
+    # GET MEMORY
+    # --------------------------------------------------------
 
     memories = conn.execute("""
         SELECT memory
@@ -1498,105 +1574,120 @@ def ask():
         WHERE user_id = ?
         ORDER BY id DESC
         LIMIT 20
-    """, (current_user(),)).fetchall()
+    """, (
+        current_user(),
+    )).fetchall()
 
     conn.commit()
     conn.close()
 
-
     # --------------------------------------------------------
-    # BUILD PROMPT
+    # BUILD OPENROUTER MESSAGES
     # --------------------------------------------------------
 
-    prompt = """
-You are X.ai, a helpful personal AI assistant.
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are X.ai, a helpful personal AI assistant. "
+                "Be clear, friendly, useful and concise."
+            )
+        }
+    ]
 
-Be clear, friendly and useful.
+    if memories:
 
-User memories:
-"""
-
-    for memory in memories:
-        prompt += "\n- " + memory["memory"]
-
-    prompt += "\n\nConversation:\n"
-
-    for row in rows:
-        role = row["role"].upper()
-
-        prompt += (
-            f"\n{role}: {row['content']}"
+        memory_text = "\n".join(
+            "- " + memory["memory"]
+            for memory in memories
         )
 
-    prompt += "\n\nASSISTANT:"
+        messages.append({
+            "role": "system",
+            "content": (
+                "The following are memories saved by the user. "
+                "Use them when relevant:\n\n"
+                + memory_text
+            )
+        })
 
+    for row in rows:
+
+        role = row["role"]
+
+        if role not in ["user", "assistant"]:
+            continue
+
+        messages.append({
+            "role": role,
+            "content": row["content"]
+        })
 
     # --------------------------------------------------------
-    # CALL OLLAMA
+    # CALL OPENROUTER
     # --------------------------------------------------------
+
+    headers = {
+        "Authorization": "Bearer " + OPENROUTER_API_KEY,
+        "Content-Type": "application/json",
+        "HTTP-Referer": request.host_url,
+        "X-Title": "X.ai"
+    }
+
+    payload = {
+        "model": MODEL,
+        "messages": messages,
+        "temperature": 0.7
+    }
 
     try:
 
         response = requests.post(
-
-            OLLAMA_URL,
-
-            json={
-                "model": MODEL,
-                "prompt": prompt,
-                "stream": False
-            },
-
-            # IMPORTANT: 20-second timeout
+            OPENROUTER_URL,
+            headers=headers,
+            json=payload,
             timeout=AI_TIMEOUT
-
         )
 
-        response.raise_for_status()
+    except requests.RequestException as error:
+
+        return jsonify({
+            "error": "Could not connect to OpenRouter: " + str(error)
+        }), 502
+
+    # --------------------------------------------------------
+    # OPENROUTER ERROR
+    # --------------------------------------------------------
+
+    if response.status_code != 200:
+
+        try:
+            error_data = response.json()
+        except Exception:
+            error_data = response.text
+
+        return jsonify({
+            "error": "OpenRouter error: " + str(error_data)
+        }), 502
+
+    # --------------------------------------------------------
+    # GET ANSWER
+    # --------------------------------------------------------
+
+    try:
 
         result = response.json()
 
-        answer = result.get(
-            "response",
-            ""
-        ).strip()
+        answer = result["choices"][0]["message"]["content"]
 
-        if not answer:
-
-            answer = "I didn't receive a response from the model."
-
-
-    except requests.exceptions.Timeout:
+    except (KeyError, IndexError, TypeError, ValueError):
 
         return jsonify({
+            "error": "Invalid response received from OpenRouter."
+        }), 502
 
-            "error":
-            "X.ai took longer than 20 seconds to respond. "
-            "Please try again."
-
-        }), 504
-
-
-    except requests.exceptions.ConnectionError:
-
-        return jsonify({
-
-            "error":
-            "Cannot connect to Ollama. "
-            "Make sure Ollama is running."
-
-        }), 503
-
-
-    except Exception as e:
-
-        return jsonify({
-
-            "error":
-            "AI error: " + str(e)
-
-        }), 500
-
+    if not answer:
+        answer = "I couldn't generate a response."
 
     # --------------------------------------------------------
     # SAVE ASSISTANT MESSAGE
@@ -1615,13 +1706,11 @@ User memories:
         now()
     ))
 
+    # --------------------------------------------------------
+    # AUTOMATIC CHAT TITLE
+    # --------------------------------------------------------
 
-    # Automatically create a title
-    # from the first user message
-
-    current_title = chat["title"]
-
-    if current_title == "New Chat":
+    if chat["title"] == "New Chat":
 
         title = message[:40]
 
@@ -1632,12 +1721,13 @@ User memories:
             UPDATE chats
             SET title = ?
             WHERE id = ?
-        """, (title, chat_id))
-
+        """, (
+            title,
+            chat_id
+        ))
 
     conn.commit()
     conn.close()
-
 
     return jsonify({
         "response": answer
@@ -1645,7 +1735,7 @@ User memories:
 
 
 # ============================================================
-# MEMORY
+# MEMORY - GET
 # ============================================================
 
 @app.route("/memory", methods=["GET"])
@@ -1659,7 +1749,9 @@ def get_memory():
         FROM memories
         WHERE user_id = ?
         ORDER BY id DESC
-    """, (current_user(),)).fetchall()
+    """, (
+        current_user(),
+    )).fetchall()
 
     conn.close()
 
@@ -1669,11 +1761,15 @@ def get_memory():
     ])
 
 
+# ============================================================
+# MEMORY - SAVE
+# ============================================================
+
 @app.route("/memory", methods=["POST"])
 @login_required
 def save_memory():
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     memory = data.get(
         "memory",
@@ -1717,8 +1813,14 @@ if __name__ == "__main__":
     print("          X.AI STARTING")
     print("========================================")
     print()
+    print("Host:")
+    print(HOST)
+    print()
+    print("Port:")
+    print(PORT)
+    print()
     print("Local URL:")
-    print("http://127.0.0.1:5000")
+    print("http://127.0.0.1:" + str(PORT))
     print()
     print("Model:")
     print(MODEL)
@@ -1726,8 +1828,8 @@ if __name__ == "__main__":
     print("AI timeout:")
     print(str(AI_TIMEOUT) + " seconds")
     print()
-    print("Theme:")
-    print("Black")
+    print("Provider:")
+    print("OpenRouter")
     print()
     print("========================================")
     print()
