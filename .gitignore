@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+users.db
+xai.db
+.env
+cloudflared.exe
+build/
+dist/
+*.spec
