@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, session, render_template_string, redi
 import sqlite3
 import requests
 import secrets
+import re
 from functools import wraps
 from datetime import datetime
 
@@ -136,6 +137,73 @@ def check_chat_owner(chat_id, user_id):
     conn.close()
 
     return chat
+
+
+
+# ============================================================
+# AUTOMATIC MEMORY
+# ============================================================
+
+def automatic_memory(user_id, message):
+    """
+    Save only simple, useful long-term preferences/facts.
+    Explicitly avoids common sensitive credential/payment data.
+    """
+    text = message.strip()
+    lower = text.lower()
+
+    blocked = [
+        "password", "passcode", "otp", "one time password",
+        "credit card", "bank account", "upi id",
+        "phone number", "home address", "my address"
+    ]
+
+    if any(word in lower for word in blocked):
+        return None
+
+    memory = None
+
+    patterns = [
+        (r"\bmy favorite (.+?) is (.+)", "User's favorite {0} is {1}."),
+        (r"\bmy name is ([A-Za-z0-9 _.-]{1,50})", "User's name is {0}."),
+        (r"\bI like (.+)", "User likes {0}."),
+        (r"\bI love (.+)", "User loves {0}."),
+        (r"\bI prefer (.+)", "User prefers {0}."),
+        (r"\bI(?:'m| am) working on (.+)", "User is working on {0}."),
+        (r"\bI(?:'m| am) building (.+)", "User is building {0}."),
+        (r"\bremember that (.+)", "User asked X.ai to remember: {0}")
+    ]
+
+    for pattern, template in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            values = [v.strip() for v in match.groups()]
+            if all(1 <= len(v) <= 150 for v in values):
+                memory = template.format(*values)
+                break
+
+    if not memory:
+        return None
+
+    conn = get_db()
+    existing = conn.execute("""
+        SELECT id FROM memories
+        WHERE user_id = ? AND LOWER(memory) = LOWER(?)
+    """, (user_id, memory)).fetchone()
+
+    if existing:
+        conn.close()
+        return None
+
+    conn.execute("""
+        INSERT INTO memories (user_id, memory, created_at)
+        VALUES (?, ?, ?)
+    """, (user_id, memory, now()))
+
+    conn.commit()
+    conn.close()
+
+    return memory
 
 
 # ============================================================
@@ -1061,6 +1129,19 @@ async function sendMessage() {
             "⚠ " + data.error
         );
 
+        if (data.memory_saved) {
+            document.getElementById("status").innerText =
+                "🧠 Memory saved";
+
+            setTimeout(() => {
+                document.getElementById("status").innerText =
+                    "X.ai is ready";
+            }, 2500);
+        } else {
+            document.getElementById("status").innerText =
+                "X.ai is ready";
+        }
+
     } else {
 
         addMessage(
@@ -1068,10 +1149,19 @@ async function sendMessage() {
             data.response
         );
 
-    }
+        if (data.memory_saved) {
+            document.getElementById("status").innerText =
+                "🧠 Memory saved";
 
-    document.getElementById("status").innerText =
-        "X.ai is ready";
+            setTimeout(() => {
+                document.getElementById("status").innerText =
+                    "X.ai is ready";
+            }, 2500);
+        } else {
+            document.getElementById("status").innerText =
+                "X.ai is ready";
+        }
+    }
 
     await loadChats();
 
@@ -1183,6 +1273,16 @@ async function saveMemory() {
 }
 
 
+async function deleteMemory(memoryId) {
+
+    await fetch("/memory/" + memoryId, {
+        method: "DELETE"
+    });
+
+    await loadMemory();
+}
+
+
 async function loadMemory() {
 
     const response =
@@ -1204,8 +1304,19 @@ async function loadMemory() {
         div.style.padding =
             "8px 0";
 
-        div.innerText =
-            "• " + memory.memory;
+        div.style.display = "flex";
+        div.style.justifyContent = "space-between";
+        div.style.gap = "10px";
+
+        const text = document.createElement("span");
+        text.innerText = "• " + memory.memory;
+
+        const remove = document.createElement("button");
+        remove.innerText = "Delete";
+        remove.onclick = () => deleteMemory(memory.id);
+
+        div.appendChild(text);
+        div.appendChild(remove);
 
         list.appendChild(div);
 
@@ -1455,6 +1566,12 @@ def ask():
             "error": "Invalid message."
         }), 400
 
+    # Automatically remember useful long-term information.
+    memory_saved = automatic_memory(
+        current_user(),
+        message
+    )
+
     chat = check_chat_owner(
         chat_id,
         current_user()
@@ -1572,7 +1689,9 @@ User memories:
 
             "error":
             "X.ai took longer than 20 seconds to respond. "
-            "Please try again."
+            "Please try again.",
+            "memory_saved": bool(memory_saved),
+            "memory": memory_saved
 
         }), 504
 
@@ -1583,7 +1702,9 @@ User memories:
 
             "error":
             "Cannot connect to Ollama. "
-            "Make sure Ollama is running."
+            "Make sure Ollama is running.",
+            "memory_saved": bool(memory_saved),
+            "memory": memory_saved
 
         }), 503
 
@@ -1593,7 +1714,9 @@ User memories:
         return jsonify({
 
             "error":
-            "AI error: " + str(e)
+            "AI error: " + str(e),
+            "memory_saved": bool(memory_saved),
+            "memory": memory_saved
 
         }), 500
 
@@ -1640,7 +1763,9 @@ User memories:
 
 
     return jsonify({
-        "response": answer
+        "response": answer,
+        "memory_saved": bool(memory_saved),
+        "memory": memory_saved
     })
 
 
@@ -1703,6 +1828,31 @@ def save_memory():
 
     return jsonify({
         "message": "Memory saved."
+    })
+
+
+
+@app.route("/memory/<int:memory_id>", methods=["DELETE"])
+@login_required
+def delete_memory(memory_id):
+
+    conn = get_db()
+
+    result = conn.execute("""
+        DELETE FROM memories
+        WHERE id = ? AND user_id = ?
+    """, (memory_id, current_user()))
+
+    conn.commit()
+    conn.close()
+
+    if result.rowcount == 0:
+        return jsonify({
+            "error": "Memory not found."
+        }), 404
+
+    return jsonify({
+        "message": "Memory deleted."
     })
 
 

@@ -1,30 +1,125 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="en">
 <head>
-    <title>X.ai Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spark.ai Login</title>
+
+```
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f4f7fb;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+
+    .login-box {
+        width: 350px;
+        padding: 30px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+        text-align: center;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+        color: #222;
+    }
+
+    .subtitle {
+        color: #777;
+        margin-bottom: 25px;
+    }
+
+    input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 13px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 16px;
+        outline: none;
+    }
+
+    input:focus {
+        border-color: #007bff;
+    }
+
+    button {
+        width: 100%;
+        padding: 13px;
+        border: none;
+        border-radius: 8px;
+        background: #007bff;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #0056b3;
+    }
+
+    .register {
+        margin-top: 20px;
+        color: #666;
+    }
+
+    .register a {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+</style>
+```
+
 </head>
+
 <body>
 
-<h2>🤖 X.ai Login</h2>
+```
+<div class="login-box">
 
-<form method="POST">
-    <input type="text" name="username" placeholder="Username" required>
-    <br><br>
+    <h1>⚡ Spark.ai</h1>
+    <p class="subtitle">Login to your account</p>
 
-    <input type="password" name="password" placeholder="Password" required>
-    <br><br>
+    <form method="POST" autocomplete="off">
 
-    <button type="submit">Login</button>
-</form>
+        <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            autocomplete="off"
+            required
+        >
 
-<p>
-    Don't have an account?
-    <a href="/register">Create account</a>
-</p>
+        <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            autocomplete="new-password"
+            required
+        >
 
-{% if error %}
-<p style="color:red;">{{ error }}</p>
-{% endif %}
+        <button type="submit">LOGIN ⚡</button>
+
+    </form>
+
+    <div class="register">
+        Don't have an account?
+        <a href="/register">Register</a>
+    </div>
+
+</div>
+```
 
 </body>
 </html>

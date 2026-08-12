@@ -118,78 +118,40 @@ header = tk.Label(
 )
 
 header.pack(pady=15)
+
+
 # ============================================================
-# SPARK.AI ROUND WATCH
+# WATCH
 # ============================================================
 
-watch_canvas = tk.Canvas(
-    window,
-    width=210,
-    height=210,
-    bg=window.cget("bg"),
-    highlightthickness=0
+watch_frame = tk.Frame(window)
+watch_frame.pack(pady=2)
+
+watch_label = tk.Label(
+    watch_frame,
+    text="⌚ SPARK.AI",
+    font=("Arial", 12, "bold")
 )
 
-watch_canvas.pack(pady=5)
+watch_label.pack()
+
+time_label = tk.Label(
+    watch_frame,
+    text="00:00:00",
+    font=("Consolas", 16, "bold")
+)
+
+time_label.pack()
 
 
-def draw_watch():
-    watch_canvas.delete("all")
+def update_watch():
+    current_time = time.strftime("%H:%M:%S")
+    time_label.config(text=current_time)
 
-    # Watch body
-    watch_canvas.create_oval(
-        10, 10, 200, 200,
-        fill="#111827",
-        outline="#5967ff",
-        width=5
-    )
-
-    # Inner screen
-    watch_canvas.create_oval(
-        24, 24, 186, 186,
-        fill="#050814",
-        outline="#26345c",
-        width=2
-    )
-
-    # Brand
-    watch_canvas.create_text(
-        105, 65,
-        text="SPARK.AI",
-        fill="#ffffff",
-        font=("Arial", 13, "bold")
-    )
-
-    # Current time
-    current = time.strftime("%H:%M:%S")
-
-    watch_canvas.create_text(
-        105, 105,
-        text=current,
-        fill="#55aaff",
-        font=("Consolas", 18, "bold")
-    )
-
-    # Spark symbol
-    watch_canvas.create_text(
-        105, 140,
-        text="⚡",
-        fill="#9b7cff",
-        font=("Arial", 22, "bold")
-    )
-
-    # Date
-    watch_canvas.create_text(
-        105, 168,
-        text=time.strftime("%d %b %Y"),
-        fill="#7f8aa3",
-        font=("Arial", 9)
-    )
-
-    window.after(1000, draw_watch)
+    window.after(1000, update_watch)
 
 
-draw_watch()
+update_watch()
 
 
 # ============================================================

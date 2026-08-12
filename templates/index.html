@@ -1,185 +1,364 @@
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X.ai</title>
+
+    <title>Spark.ai</title>
 
     <style>
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .app {
-            width: 95%;
-            max-width: 900px;
-            height: 90vh;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.15);
-            display: flex;
-            flex-direction: column;
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f5f7fb;
+            color: #222;
+            height: 100vh;
             overflow: hidden;
         }
 
-        .header {
-            height: 85px;
+        .app {
             display: flex;
-            align-items: center;
-            padding: 15px 25px;
-            border-bottom: 1px solid #ddd;
+            height: 100vh;
         }
 
-        .logo {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            object-fit: contain;
-            margin-right: 14px;
-        }
-
-        .title {
-            font-size: 28px;
-            font-weight: bold;
-        }
-
-        .online {
-            margin-left: auto;
-            color: #555;
-            font-size: 16px;
-        }
-
-        .logout {
-            margin-left: 20px;
-            padding: 9px 16px;
-            border: none;
-            border-radius: 18px;
-            background: #111;
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: #111827;
             color: white;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .logout:hover {
-            background: #333;
-        }
-
-        #chat {
-            flex: 1;
-            padding: 25px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
             overflow-y: auto;
         }
 
-        .message {
-            max-width: 75%;
-            padding: 14px 18px;
-            margin-bottom: 15px;
-            border-radius: 16px;
-            font-size: 16px;
-            line-height: 1.5;
-            word-wrap: break-word;
+        .logo {
+            font-size: 25px;
+            font-weight: bold;
+            margin-bottom: 25px;
         }
 
-        .ai {
-            background: #eeeeee;
-            color: #111;
-            margin-right: auto;
+        .new-chat {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .new-chat:hover {
+            background: #1d4ed8;
+        }
+
+        /* WRITING ASSISTANT */
+        .assistant-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #d1d5db;
+            margin: 10px 0;
+        }
+
+        .tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .tool-button {
+            border: 1px solid #374151;
+            background: #1f2937;
+            color: white;
+            padding: 9px 5px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .tool-button:hover {
+            background: #374151;
+        }
+
+        .tool-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
         }
 
         .user {
-            background: #111;
+            padding: 12px 0;
+            border-top: 1px solid #374151;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .logout {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: #dc2626;
             color: white;
-            margin-left: auto;
+            text-decoration: none;
+            border-radius: 7px;
         }
 
-        .input-area {
-            display: flex;
-            gap: 12px;
-            padding: 18px;
-            border-top: 1px solid #ddd;
+        .logout:hover {
+            background: #b91c1c;
         }
 
-        #message {
+        /* MAIN */
+        .main {
             flex: 1;
-            height: 52px;
-            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .topbar {
+            height: 65px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 25px;
+            font-size: 21px;
+            font-weight: bold;
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+        }
+
+        .welcome {
+            max-width: 700px;
+            margin: 100px auto;
+            text-align: center;
+        }
+
+        .welcome h1 {
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .welcome p {
+            color: #666;
+            font-size: 17px;
+        }
+
+        /* MESSAGES */
+        .message {
+            max-width: 850px;
+            margin: 15px auto;
+            display: flex;
+        }
+
+        .message-content {
+            padding: 13px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            justify-content: flex-end;
+        }
+
+        .user-message .message-content {
+            background: #2563eb;
+            color: white;
+            border-bottom-right-radius: 3px;
+            max-width: 75%;
+        }
+
+        .ai-message {
+            justify-content: flex-start;
+        }
+
+        .ai-message .message-content {
+            background: white;
+            border: 1px solid #ddd;
+            max-width: 80%;
+            border-bottom-left-radius: 3px;
+        }
+
+        /* WRITING AREA */
+        .writing-area {
+            background: #ffffff;
+            border-top: 1px solid #ddd;
+            padding: 12px 25px;
+        }
+
+        .writing-box {
+            max-width: 850px;
+            margin: auto;
+        }
+
+        .writing-label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 7px;
+        }
+
+        #writingInput {
+            width: 100%;
+            min-height: 90px;
+            resize: vertical;
+            padding: 12px;
             border: 1px solid #ccc;
-            border-radius: 28px;
+            border-radius: 10px;
+            outline: none;
+            font-size: 15px;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        #writingInput:focus {
+            border-color: #2563eb;
+        }
+
+        .writing-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .writing-action {
+            border: none;
+            padding: 8px 12px;
+            border-radius: 7px;
+            background: #eef2ff;
+            color: #1d4ed8;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .writing-action:hover {
+            background: #dbeafe;
+        }
+
+        .writing-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* CHAT INPUT */
+        .input-area {
+            background: white;
+            border-top: 1px solid #ddd;
+            padding: 15px 25px;
+        }
+
+        .input-box {
+            max-width: 850px;
+            margin: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
             outline: none;
             font-size: 16px;
         }
 
-        #message:focus {
-            border-color: #777;
+        #messageInput:focus {
+            border-color: #2563eb;
         }
 
-        #send {
-            height: 52px;
-            padding: 0 28px;
+        #sendButton {
+            padding: 0 22px;
             border: none;
-            border-radius: 28px;
-            background: #111;
+            border-radius: 10px;
+            background: #2563eb;
             color: white;
             font-size: 16px;
             cursor: pointer;
         }
 
-        #send:hover {
-            background: #333;
+        #sendButton:hover {
+            background: #1d4ed8;
         }
 
-        #send:disabled {
-            background: #888;
+        #sendButton:disabled {
+            background: #9ca3af;
             cursor: not-allowed;
         }
 
+        .typing {
+            color: #777;
+            font-style: italic;
+            padding: 10px;
+        }
+
+        /* MOBILE */
+        @media (max-width: 800px) {
+
+            .sidebar {
+                width: 210px;
+            }
+
+            .tools {
+                grid-template-columns: 1fr;
+            }
+
+            .welcome {
+                margin: 60px auto;
+            }
+
+            .welcome h1 {
+                font-size: 30px;
+            }
+
+            .user-message .message-content,
+            .ai-message .message-content {
+                max-width: 90%;
+            }
+
+            .chat-area {
+                padding: 15px;
+            }
+
+            .input-area,
+            .writing-area {
+                padding: 10px;
+            }
+        }
+
         @media (max-width: 600px) {
-            .app {
-                width: 100%;
-                height: 100vh;
-                border-radius: 0;
-            }
 
-            .header {
-                padding: 12px 15px;
-            }
-
-            .logo {
-                width: 45px;
-                height: 45px;
-            }
-
-            .title {
-                font-size: 24px;
-            }
-
-            .online {
-                display: none;
-            }
-
-            .message {
-                max-width: 85%;
-            }
-
-            .input-area {
+            .sidebar {
+                width: 170px;
                 padding: 12px;
             }
 
-            #send {
-                padding: 0 20px;
+            .logo {
+                font-size: 20px;
+            }
+
+            .tool-button {
+                font-size: 11px;
+            }
+
+            .writing-actions {
+                max-height: 100px;
+                overflow-y: auto;
             }
         }
     </style>
@@ -187,107 +366,436 @@
 
 <body>
 
-    <div class="app">
+<div class="app">
 
-        <div class="header">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
 
-            <img
-                src="{{ url_for('static', filename='logo.png') }}"
-                alt="X.ai Logo"
-                class="logo"
-            >
+        <div class="logo">
+            ⚡ Spark.ai
+        </div>
 
-            <div class="title">
-                X.ai
-            </div>
+        <button class="new-chat" onclick="newChat()">
+            + New Chat
+        </button>
 
-            <div class="online">
-                ● Online
-            </div>
+        <div class="assistant-title">
+            ✨ Writing Assistant
+        </div>
 
-            <button
-                class="logout"
-                onclick="window.location.href='/logout'">
-                Logout
+        <div class="tools">
+
+            <button class="tool-button" onclick="writingAction('grammar')">
+                ✓ Grammar
+            </button>
+
+            <button class="tool-button" onclick="writingAction('spelling')">
+                🔤 Spelling
+            </button>
+
+            <button class="tool-button" onclick="writingAction('improve')">
+                ✨ Improve
+            </button>
+
+            <button class="tool-button" onclick="writingAction('rewrite')">
+                🔄 Rewrite
+            </button>
+
+            <button class="tool-button" onclick="writingAction('summarize')">
+                📌 Summarize
+            </button>
+
+            <button class="tool-button" onclick="writingAction('shorten')">
+                📏 Shorten
+            </button>
+
+            <button class="tool-button" onclick="writingAction('expand')">
+                📖 Expand
+            </button>
+
+            <button class="tool-button" onclick="writingAction('brainstorm')">
+                💡 Brainstorm
+            </button>
+
+            <button class="tool-button" onclick="writingAction('professional')">
+                💼 Professional
+            </button>
+
+            <button class="tool-button" onclick="writingAction('friendly')">
+                😊 Friendly
+            </button>
+
+            <button class="tool-button" onclick="writingAction('simple')">
+                🟢 Simple
+            </button>
+
+            <button class="tool-button" onclick="writingAction('translate')">
+                🌐 Translate
             </button>
 
         </div>
 
-        <div id="chat">
+        <div class="sidebar-bottom">
 
-            <div class="message ai">
-                Hello! I'm X.ai. How can I help you? 🤖
+            <div class="user">
+                👤 {{ session.get("username", "User") }}
+            </div>
+
+            <a href="/logout" class="logout">
+                Logout
+            </a>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <header class="topbar">
+            ⚡ Spark.ai
+        </header>
+
+
+        <!-- CHAT -->
+        <section class="chat-area" id="chatArea">
+
+            <div class="welcome" id="welcome">
+
+                <h1>⚡ Hello!</h1>
+
+                <p>
+                    I'm Spark.ai. Ask me anything.
+                </p>
+
+                <p>
+                    Or use the Writing Assistant to improve your text.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- WRITING ASSISTANT INPUT -->
+        <div class="writing-area">
+
+            <div class="writing-box">
+
+                <div class="writing-label">
+                    ✨ Writing Assistant
+                </div>
+
+                <textarea
+                    id="writingInput"
+                    placeholder="Paste or type your text here..."
+                ></textarea>
+
+                <div class="writing-actions">
+
+                    <button class="writing-action"
+                            onclick="writingAction('grammar')">
+                        ✓ Grammar
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('spelling')">
+                        🔤 Spelling
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('improve')">
+                        ✨ Improve
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('rewrite')">
+                        🔄 Rewrite
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('summarize')">
+                        📌 Summarize
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('shorten')">
+                        📏 Shorten
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('expand')">
+                        📖 Expand
+                    </button>
+
+                    <button class="writing-action"
+                            onclick="writingAction('brainstorm')">
+                        💡 Brainstorm
+                    </button>
+
+                </div>
+
             </div>
 
         </div>
 
+
+        <!-- CHAT INPUT -->
         <div class="input-area">
 
-            <input
-                type="text"
-                id="message"
-                placeholder="Message X.ai..."
-                autocomplete="off"
-            >
+            <div class="input-box">
 
-            <button id="send">
-                Send
-            </button>
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Message Spark.ai..."
+                    autocomplete="off"
+                >
+
+                <button id="sendButton" onclick="sendMessage()">
+                    Send
+                </button>
+
+            </div>
 
         </div>
 
-    </div>
+    </main>
 
-    <script>
-
-        const messageInput =
-            document.getElementById("message");
-
-        const sendButton =
-            document.getElementById("send");
-
-        const chat =
-            document.getElementById("chat");
+</div>
 
 
-        function addMessage(text, type) {
+<script>
 
-            const message =
-                document.createElement("div");
+    const messageInput =
+        document.getElementById("messageInput");
 
-            message.className =
-                "message " + type;
+    const sendButton =
+        document.getElementById("sendButton");
 
-            message.textContent = text;
+    const chatArea =
+        document.getElementById("chatArea");
 
-            chat.appendChild(message);
+    const writingInput =
+        document.getElementById("writingInput");
 
-            chat.scrollTop =
-                chat.scrollHeight;
+
+    // ========================================================
+    // ENTER KEY FOR CHAT
+    // ========================================================
+
+    messageInput.addEventListener(
+        "keydown",
+        function(event) {
+
+            if (event.key === "Enter") {
+
+                event.preventDefault();
+
+                sendMessage();
+
+            }
+
+        }
+    );
+
+
+    // ========================================================
+    // SEND CHAT MESSAGE
+    // ========================================================
+
+    async function sendMessage() {
+
+        const message =
+            messageInput.value.trim();
+
+        if (!message) {
+            return;
+        }
+
+        removeWelcome();
+
+        addMessage(
+            message,
+            "user"
+        );
+
+        messageInput.value = "";
+
+        sendButton.disabled = true;
+
+        messageInput.disabled = true;
+
+        const typing =
+            document.createElement("div");
+
+        typing.className =
+            "message ai-message";
+
+        typing.id =
+            "typing";
+
+        typing.innerHTML = `
+            <div class="message-content typing">
+                Spark.ai is thinking...
+            </div>
+        `;
+
+        chatArea.appendChild(typing);
+
+        scrollToBottom();
+
+
+        try {
+
+            const response =
+                await fetch("/chat", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        message: message
+                    })
+
+                });
+
+
+            const data =
+                await response.json();
+
+
+            removeTyping();
+
+
+            if (data.response) {
+
+                addMessage(
+                    data.response,
+                    "ai"
+                );
+
+            }
+
+            else if (data.error) {
+
+                addMessage(
+                    "Error: " + data.error,
+                    "ai"
+                );
+
+            }
+
+            else {
+
+                addMessage(
+                    "Spark.ai could not generate a response.",
+                    "ai"
+                );
+
+            }
+
+        }
+
+        catch (error) {
+
+            removeTyping();
+
+            addMessage(
+                "Unable to connect to Spark.ai. Make sure the server and Ollama are running.",
+                "ai"
+            );
+
+            console.error(error);
+
         }
 
 
-        async function sendMessage() {
+        sendButton.disabled = false;
 
-            const text =
-                messageInput.value.trim();
+        messageInput.disabled = false;
 
-            if (!text) {
-                return;
-            }
+        messageInput.focus();
 
-            addMessage(text, "user");
+        scrollToBottom();
 
-            messageInput.value = "";
+    }
 
-            sendButton.disabled = true;
 
-            addMessage("Thinking...", "ai");
+    // ========================================================
+    // WRITING ASSISTANT
+    // ========================================================
 
-            try {
+    async function writingAction(action) {
 
-                const response =
-                    await fetch("/chat", {
+        const text =
+            writingInput.value.trim();
+
+        if (!text) {
+
+            alert(
+                "Please enter some text in the Writing Assistant first."
+            );
+
+            writingInput.focus();
+
+            return;
+
+        }
+
+
+        const buttons =
+            document.querySelectorAll(
+                ".tool-button, .writing-action"
+            );
+
+
+        buttons.forEach(
+            button => button.disabled = true
+        );
+
+
+        removeWelcome();
+
+
+        addMessage(
+            "Writing Assistant: " +
+            getActionName(action),
+            "user"
+        );
+
+
+        const typing =
+            document.createElement("div");
+
+        typing.className =
+            "message ai-message";
+
+        typing.id =
+            "typing";
+
+        typing.innerHTML = `
+            <div class="message-content typing">
+                Spark.ai is working on your text...
+            </div>
+        `;
+
+        chatArea.appendChild(typing);
+
+        scrollToBottom();
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/writing",
+                    {
                         method: "POST",
 
                         headers: {
@@ -296,80 +804,251 @@
                         },
 
                         body: JSON.stringify({
-                            message: text
+                            text: text,
+                            action: action
                         })
-                    });
+                    }
+                );
 
 
-                const data =
-                    await response.json();
+            const data =
+                await response.json();
 
 
-                const aiMessages =
-                    document.querySelectorAll(".ai");
+            removeTyping();
 
 
-                if (aiMessages.length > 0) {
-
-                    aiMessages[
-                        aiMessages.length - 1
-                    ].remove();
-
-                }
-
+            if (data.response) {
 
                 addMessage(
-                    data.response ||
-                    "No response received.",
+                    data.response,
                     "ai"
                 );
 
-            } catch (error) {
+                // Put result back into writing box
+                writingInput.value =
+                    data.response;
 
-                const aiMessages =
-                    document.querySelectorAll(".ai");
-
-                if (aiMessages.length > 0) {
-
-                    aiMessages[
-                        aiMessages.length - 1
-                    ].remove();
-
-                }
-
-                addMessage(
-                    "Connection error. Please make sure Ollama is running.",
-                    "ai"
-                );
-
-            } finally {
-
-                sendButton.disabled = false;
-
-                messageInput.focus();
             }
+
+            else if (data.error) {
+
+                addMessage(
+                    "Error: " + data.error,
+                    "ai"
+                );
+
+            }
+
+            else {
+
+                addMessage(
+                    "Writing Assistant could not generate a response.",
+                    "ai"
+                );
+
+            }
+
+        }
+
+        catch (error) {
+
+            removeTyping();
+
+            addMessage(
+                "Unable to connect to the Writing Assistant.",
+                "ai"
+            );
+
+            console.error(error);
+
         }
 
 
-        sendButton.addEventListener(
-            "click",
-            sendMessage
+        buttons.forEach(
+            button => button.disabled = false
         );
 
+        scrollToBottom();
 
-        messageInput.addEventListener(
-            "keydown",
-            function(event) {
+    }
 
-                if (event.key === "Enter") {
-                    sendMessage();
-                }
 
-            }
-        );
+    // ========================================================
+    // ACTION NAMES
+    // ========================================================
 
-    </script>
+    function getActionName(action) {
+
+        const names = {
+
+            grammar: "Grammar Check",
+
+            spelling: "Spelling Check",
+
+            improve: "Improve Writing",
+
+            rewrite: "Rewrite",
+
+            summarize: "Summarize",
+
+            shorten: "Make Shorter",
+
+            expand: "Make Longer",
+
+            brainstorm: "Brainstorm",
+
+            professional: "Professional Tone",
+
+            friendly: "Friendly Tone",
+
+            simple: "Simple Language",
+
+            translate: "Translate"
+
+        };
+
+        return names[action] || action;
+
+    }
+
+
+    // ========================================================
+    // ADD MESSAGE
+    // ========================================================
+
+    function addMessage(text, type) {
+
+        const message =
+            document.createElement("div");
+
+
+        if (type === "user") {
+
+            message.className =
+                "message user-message";
+
+        }
+
+        else {
+
+            message.className =
+                "message ai-message";
+
+        }
+
+
+        const content =
+            document.createElement("div");
+
+        content.className =
+            "message-content";
+
+        content.textContent =
+            text;
+
+
+        message.appendChild(content);
+
+        chatArea.appendChild(message);
+
+        scrollToBottom();
+
+    }
+
+
+    // ========================================================
+    // REMOVE TYPING
+    // ========================================================
+
+    function removeTyping() {
+
+        const typing =
+            document.getElementById("typing");
+
+        if (typing) {
+            typing.remove();
+        }
+
+    }
+
+
+    // ========================================================
+    // REMOVE WELCOME
+    // ========================================================
+
+    function removeWelcome() {
+
+        const welcome =
+            document.getElementById("welcome");
+
+        if (welcome) {
+            welcome.remove();
+        }
+
+    }
+
+
+    // ========================================================
+    // SCROLL
+    // ========================================================
+
+    function scrollToBottom() {
+
+        chatArea.scrollTop =
+            chatArea.scrollHeight;
+
+    }
+
+
+    // ========================================================
+    // NEW CHAT
+    // ========================================================
+
+    function newChat() {
+
+        chatArea.innerHTML = `
+
+            <div
+                class="welcome"
+                id="welcome"
+            >
+
+                <h1>⚡ Hello!</h1>
+
+                <p>
+                    I'm Spark.ai. Ask me anything.
+                </p>
+
+                <p>
+                    Or use the Writing Assistant
+                    to improve your text.
+                </p>
+
+            </div>
+
+        `;
+
+        messageInput.value = "";
+
+        writingInput.value = "";
+
+        messageInput.focus();
+
+    }
+
+
+    // ========================================================
+    // START
+    // ========================================================
+
+    window.onload = function() {
+
+        messageInput.focus();
+
+    };
+
+</script>
 
 </body>
-
 </html>
